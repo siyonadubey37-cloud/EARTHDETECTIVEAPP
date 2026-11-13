@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Earth Detective | Climate case files from NASA data</title>
+<style>
+:root{--a:#f0a43a;--ink:#e8e6e1;--mute:#8a919c;--ln:rgba(255,255,255,.13);--ok:#7fb894;--bad:#d9705f}
+*{box-sizing:border-box;margin:0}html,body{height:100%;overflow:hidden;background:#000;color:var(--ink);font:13px/1.5 "Helvetica Neue",Arial,sans-serif}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab}canvas:active{cursor:grabbing}
+button,select,input{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer}
+.lb{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+#loader{position:fixed;inset:0;background:#000;z-index:50;display:flex;align-items:center;justify-content:center;text-align:center;letter-spacing:.3em;font-size:12px;transition:opacity .9s}
+#loader small{display:block;margin-top:10px;color:var(--mute);letter-spacing:.14em;font-size:10px}
+header{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:18px;padding:14px 20px;z-index:5;pointer-events:none}
+header b{letter-spacing:.28em;font-size:13px;font-weight:600}header b i{color:var(--a);font-style:normal}
+#status span{border:1px solid;padding:1px 8px;font-size:10px;letter-spacing:.12em}
+.LIVE{color:var(--ok)}.CACHED{color:var(--a)}.SYNTHETIC{color:var(--bad)}
+#rail{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;border:1px solid var(--ln);border-left:0;background:rgba(4,6,9,.8)}
+#rail button{padding:14px 12px;font-size:10px;letter-spacing:.16em;color:var(--mute);border-bottom:1px solid var(--ln);text-align:left}
+#rail button:hover,#rail button.on{color:var(--a)}
+.panel{position:fixed;z-index:5;background:rgba(4,6,9,.82);backdrop-filter:blur(10px);border:1px solid var(--ln);overflow:auto;transition:transform .35s}
+#cases{left:58px;top:56px;bottom:84px;width:250px;transform:translateX(-120%)}#cases.open{transform:none}
+#cases .it{display:flex;justify-content:space-between;gap:8px;padding:11px 14px;border-bottom:1px solid var(--ln);cursor:pointer;width:100%;text-align:left}
+#cases .it:hover,#cases .it.on{background:rgba(240,164,58,.1)}#cases small{color:var(--mute)}#cases input,#cases select{display:block;width:100%;background:#000;border:1px solid var(--ln);padding:6px;margin-bottom:6px;color:var(--ink)}
+#dossier{right:16px;top:56px;bottom:84px;width:400px;transform:translateX(120%);padding:18px}#dossier.open{transform:none}
+#dossier h2{font-size:22px;font-weight:500;margin:4px 0 8px}
+.stamp{display:inline-block;border:2px solid;padding:2px 10px;font-weight:700;letter-spacing:.14em;font-size:12px;transform:rotate(-3deg);margin:6px 0 10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.g2 div{border-top:1px solid var(--ln);padding-top:6px}.g2 b{font-size:22px;font-weight:500;display:block}
+#dossier p{color:#c9ccd2;margin:8px 0}details{margin-top:10px;border-top:1px solid var(--ln);padding-top:8px}summary{cursor:pointer;color:var(--a);font-size:11px;letter-spacing:.1em}
+code{font-size:10px;color:var(--a);word-break:break-all}.x{position:absolute;right:14px;top:10px;font-size:20px;color:var(--mute)}
+svg text{font-family:inherit}table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:5px 4px;border-bottom:1px solid var(--ln);text-align:left;font-weight:400}th{color:var(--mute)}
+#bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:14px;padding:10px 18px;background:rgba(4,6,9,.82);border:1px solid var(--ln);width:min(720px,94vw)}
+#bar input[type=range]{flex:1;accent-color:var(--a)}#yr{font-size:22px;width:56px;text-align:center}
+#play{width:30px;height:30px;border:1px solid var(--ln);border-radius:50%}
+#bar select{background:#000;border:1px solid var(--ln);padding:4px;font-size:11px;max-width:150px}
+#leg{position:fixed;right:20px;bottom:84px;z-index:4;font-size:10px;color:var(--mute);text-align:right;pointer-events:none}
+#leg i{display:block;height:6px;width:150px;margin:4px 0 0 auto;background:linear-gradient(90deg,hsl(209,75%,55%),hsl(100,75%,55%),hsl(40,75%,55%),hsl(0,75%,55%))}
+#tip{position:fixed;z-index:9;pointer-events:none;background:#000;border:1px solid var(--a);padding:4px 9px;font-size:11px;display:none}
+#banner{position:fixed;top:48px;left:50%;transform:translateX(-50%);z-index:8;background:#000;border:1px solid var(--a);padding:8px 14px;display:none;max-width:90vw;font-size:12px}
+#modal{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center}
+#modal>div{background:#05070a;border:1px solid var(--ln);width:min(760px,94vw);max-height:86vh;overflow:auto;padding:26px;position:relative}
+#modal h3{font-weight:500;font-size:18px;margin:14px 0 6px}#modal p{color:#c9ccd2;margin:6px 0}.ok{color:var(--ok)}.no{color:var(--bad)}
+@media(max-width:800px){#dossier{left:8px;right:8px;width:auto;top:auto;height:58%}#cases{left:0;width:80%}#rail{top:auto;bottom:70px;transform:none;flex-direction:row;border:1px solid var(--ln)}#bar select{display:none}#leg{display:none}}
+header,#rail,#bar,#leg,.panel{transition:opacity .9s,transform .35s}
+body.land header,body.land #rail,body.land #bar,body.land #leg,body.land .panel{opacity:0;pointer-events:none}
+#land{position:fixed;inset:0;z-index:15;display:flex;flex-direction:column;align-items:center;padding-top:6vh;text-align:center;pointer-events:none;transition:opacity .9s;overflow:auto}
+#land>*{pointer-events:auto}body:not(.land) #land{opacity:0}body:not(.land) #land>*{pointer-events:none}
+#land h1{font-size:clamp(30px,6.5vw,68px);font-weight:300;letter-spacing:.3em;padding-left:.3em}#land h1 i{color:var(--a);font-style:normal}
+.lcard{width:min(380px,92vw);margin-top:22px;border:1px solid var(--ln);background:rgba(4,6,9,.82);backdrop-filter:blur(10px);padding:18px;text-align:left}
+.tabs{display:flex;border-bottom:1px solid var(--ln);margin-bottom:14px}.tabs button{flex:1;padding:8px;font-size:10px;letter-spacing:.16em;color:var(--mute);border-bottom:2px solid transparent}.tabs button.on{color:var(--a);border-color:var(--a)}
+.lcard input{display:block;width:100%;background:#000;border:1px solid var(--ln);color:var(--ink);padding:9px;margin:4px 0 12px}.lcard input:focus{outline:1px solid var(--a)}
+.go{width:100%;padding:11px;border:1px solid var(--a)!important;color:var(--a);letter-spacing:.2em;font-size:11px}.go:hover{background:rgba(240,164,58,.12)}
+.gst{width:100%;padding:12px 0 4px;font-size:11px;letter-spacing:.16em;color:var(--ink)}.gst:hover{color:var(--a)}
+#aerr{color:var(--bad);min-height:18px;font-size:12px;margin-bottom:6px}.note{color:var(--mute);font-size:11px;margin-top:10px;border-top:1px solid var(--ln);padding-top:8px}
+canvas{touch-action:none}.zb{width:28px;height:28px;flex:none;border:1px solid var(--ln);border-radius:50%;font-size:16px;line-height:1;color:var(--ink)}.zb:hover{border-color:var(--a);color:var(--a)}
+.story{border-left:2px solid var(--a);padding-left:10px;margin:12px 0}.story p{margin:4px 0}.sw{position:relative;aspect-ratio:1;background:#05070a;border:1px solid var(--ln)}.sw img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.sw .ov{opacity:.82}.sw[data-err]::after{content:"Satellite image unavailable (offline, or no data for this date).";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;color:#8a919c;font-size:12px}
+.sw.ld::after{content:"Loading from NASA...";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8a919c;font-size:12px}.sw.ld[data-slow]::after{content:"Still waiting for NASA. Try the Worldview link below."}
+</style></head><body class="land">
+<div id="loader"><div>EARTH SYSTEM BUREAU<small>OPENING CASE FILES</small></div></div>
+<canvas id="gl"></canvas>
+<header><b>EARTH<i>/</i>DETECTIVE</b><span class="lb">Climate case files from NASA data</span><span id="status"></span><span id="who" style="margin-left:auto;pointer-events:auto"></span></header>
+<div id="banner"></div><div id="tip"></div>
+<div id="land"><h1>EARTH<i>/</i>DETECTIVE</h1><p class="lb" style="margin-top:10px">Every warming city is a case. Follow the evidence.</p>
+<form class="lcard" onsubmit="auth(event)"><div class="tabs"><button type="button" id="t-login" class="on" onclick="setMode('login')">SIGN IN</button><button type="button" id="t-reg" onclick="setMode('reg')">CREATE ACCOUNT</button></div>
+<label class="lb" for="au">Username</label><input id="au" autocomplete="username" maxlength="30"><label class="lb" for="ap">Password</label><input id="ap" type="password" autocomplete="current-password" maxlength="100">
+<div id="aerr" role="alert"></div><button class="go" id="go">SIGN IN</button><button type="button" class="gst" onclick="enter('Guest')">ENTER AS GUEST &rarr;</button>
+<p class="note">Accounts exist only in this browser. There is no server, no email and no password recovery.</p></form></div>
+<nav id="rail"><button id="b-cases" onclick="tog()">CASES</button><button onclick="meth()">METHOD</button><button onclick="reset()">RESET</button></nav>
+<aside id="cases" class="panel open"><div style="position:sticky;top:0;background:#05070a;padding:10px;border-bottom:1px solid var(--ln);z-index:2"><input id="q" placeholder="Search 100 cities" oninput="list()" aria-label="Search cities"><select id="so" onchange="list()" aria-label="Sort cases"><option value="no">Sort: by region</option><option value="az">Sort: A-Z</option><option value="warm">Sort: fastest warming</option><option value="story">Featured stories (10)</option></select></div><div id="cl"></div></aside>
+<aside id="dossier" class="panel"></aside>
+<div id="leg">Departure from 1985-94 baseline<i></i><span style="display:flex;justify-content:space-between;width:150px;margin-left:auto"><span>0</span><span>+2.5 &deg;C</span></span></div>
+<div id="bar"><button id="play" onclick="play()" aria-label="Play timeline">&#9654;</button><input id="sl" type="range" min="1985" max="2024" value="2024"><span id="yr">2024</span>
+<select id="metric"><option value="tmax">Hot-season day max</option><option value="tmin">Hot-season night min</option><option value="t2m">Annual mean</option></select><button class="zb" onclick="zoom(-1)" aria-label="Zoom in">+</button><button class="zb" onclick="zoom(1)" aria-label="Zoom out">&minus;</button></div>
+<div id="modal" onclick="if(event.target===this)this.style.display='none'"><div id="mbody"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const C=[["Delhi, India",28.61,77.21],["Mohali, India",30.70,76.72],["Cairo, Egypt",30.04,31.24],["Lagos, Nigeria",6.52,3.38],["Mumbai, India",19.08,72.88],["Sao Paulo, Brazil",-23.55,-46.63],["Mexico City, Mexico",19.43,-99.13],["Phoenix, USA",33.45,-112.07],["Tokyo, Japan",35.68,139.69],["Shanghai, China",31.23,121.47],["Beijing, China",39.90,116.41],["Guangzhou, China",23.13,113.26],["Hong Kong, China",22.32,114.17],["Seoul, South Korea",37.57,126.98],["Taipei, Taiwan",25.03,121.57],["Bangkok, Thailand",13.76,100.50],["Jakarta, Indonesia",-6.21,106.85],["Manila, Philippines",14.60,120.98],["Ho Chi Minh City, Vietnam",10.82,106.63],["Hanoi, Vietnam",21.03,105.85],["Singapore, Singapore",1.35,103.82],["Kuala Lumpur, Malaysia",3.14,101.69],["Dhaka, Bangladesh",23.81,90.41],["Karachi, Pakistan",24.86,67.01],["Lahore, Pakistan",31.55,74.34],["Kolkata, India",22.57,88.36],["Chennai, India",13.08,80.27],["Bengaluru, India",12.97,77.59],["Hyderabad, India",17.39,78.49],["Colombo, Sri Lanka",6.93,79.86],["Kathmandu, Nepal",27.72,85.32],["Kabul, Afghanistan",34.53,69.17],["Tehran, Iran",35.69,51.39],["Baghdad, Iraq",33.31,44.37],["Riyadh, Saudi Arabia",24.71,46.68],["Dubai, UAE",25.20,55.27],["Doha, Qatar",25.29,51.53],["Kuwait City, Kuwait",29.38,47.99],["Istanbul, Turkey",41.01,28.98],["Tel Aviv, Israel",32.09,34.78],["Tashkent, Uzbekistan",41.30,69.24],["Almaty, Kazakhstan",43.24,76.89],["Ulaanbaatar, Mongolia",47.89,106.91],["Yangon, Myanmar",16.84,96.17],["Kinshasa, DR Congo",-4.44,15.27],["Nairobi, Kenya",-1.29,36.82],["Addis Ababa, Ethiopia",9.03,38.74],["Johannesburg, South Africa",-26.20,28.05],["Cape Town, South Africa",-33.92,18.42],["Casablanca, Morocco",33.57,-7.59],["Algiers, Algeria",36.75,3.06],["Tunis, Tunisia",36.81,10.18],["Accra, Ghana",5.60,-0.19],["Dakar, Senegal",14.72,-17.47],["Abidjan, Ivory Coast",5.36,-4.01],["Khartoum, Sudan",15.50,32.56],["Dar es Salaam, Tanzania",-6.79,39.21],["Luanda, Angola",-8.84,13.23],["Kampala, Uganda",0.35,32.58],["Maputo, Mozambique",-25.97,32.57],["Lusaka, Zambia",-15.39,28.32],["Niamey, Niger",13.51,2.11],["London, UK",51.51,-0.13],["Paris, France",48.86,2.35],["Madrid, Spain",40.42,-3.70],["Rome, Italy",41.90,12.50],["Berlin, Germany",52.52,13.40],["Moscow, Russia",55.76,37.62],["Athens, Greece",37.98,23.73],["Stockholm, Sweden",59.33,18.07],["Warsaw, Poland",52.23,21.01],["Lisbon, Portugal",38.72,-9.14],["Kyiv, Ukraine",50.45,30.52],["Reykjavik, Iceland",64.15,-21.94],["New York, USA",40.71,-74.01],["Los Angeles, USA",34.05,-118.24],["Chicago, USA",41.88,-87.63],["Houston, USA",29.76,-95.37],["Miami, USA",25.76,-80.19],["Toronto, Canada",43.65,-79.38],["Vancouver, Canada",49.28,-123.12],["Anchorage, USA",61.22,-149.90],["Havana, Cuba",23.11,-82.37],["Bogota, Colombia",4.71,-74.07],["Lima, Peru",-12.05,-77.04],["Santiago, Chile",-33.45,-70.67],["Buenos Aires, Argentina",-34.60,-58.38],["Rio de Janeiro, Brazil",-22.91,-43.17],["Brasilia, Brazil",-15.79,-47.88],["Manaus, Brazil",-3.12,-60.02],["Quito, Ecuador",-0.18,-78.47],["La Paz, Bolivia",-16.50,-68.15],["Caracas, Venezuela",10.48,-66.90],["Guatemala City, Guatemala",14.63,-90.51],["Sydney, Australia",-33.87,151.21],["Melbourne, Australia",-37.81,144.96],["Perth, Australia",-31.95,115.86],["Auckland, New Zealand",-36.85,174.76],["Port Moresby, Papua New Guinea",-9.44,147.18],["Honolulu, USA",21.31,-157.86]];
+const Y0=1985,Y1=2024,API='https://power.larc.nasa.gov/api/temporal/monthly/point';
+const URLF=c=>`${API}?parameters=T2M,T2M_MAX,T2M_MIN&community=RE&longitude=${c[2]}&latitude=${c[1]}&start=${Y0}&end=${Y1}&format=JSON`;
+const ML={tmax:'Hot-season daytime maximum (T2M_MAX)',tmin:'Hot-season night-time minimum (T2M_MIN)',t2m:'Annual mean temperature (T2M)'};
+/* Draft field notes for 10 featured cases (context only, no data claims). Team: rewrite in your own voice. */
+const FEAT={"Delhi, India":"Delhi bakes in the weeks before the monsoon, then turns heavy and humid. Concrete and asphalt keep the day's heat, so nights stay warm, and nights are when bodies recover. Watch the night-time minimum here.",
+"Mumbai, India":"Mumbai sits on the coast, so the sea keeps its days from the worst extremes. The trade-off is warm, wet air that makes ordinary heat feel harsh, and a dense city that cools slowly after dark.",
+"Phoenix, USA":"Phoenix is a desert city that kept spreading outward. Pavement and rooftops soak up the afternoon sun and give it back after dark, a textbook urban heat island. It is a useful yardstick for the other cities.",
+"Dubai, UAE":"Dubai went from a small trading port to a forest of towers in a few decades, on a hot and humid Gulf coast. Summer life runs on air conditioning. Look at how the nights, not just the days, are changing.",
+"Kuwait City, Kuwait":"Kuwait City is one of the hottest large cities on Earth in summer, with daytime highs above 45 degrees common. The question is less whether it is hot and more whether the extremes keep creeping up.",
+"Karachi, Pakistan":"In June 2015 a deadly heatwave struck Karachi during a period of power cuts, and more than a thousand people are reported to have died. A coastal megacity can be dangerous even when the thermometer is not breaking records.",
+"Cairo, Egypt":"Cairo is a huge, dense city on the Nile, surrounded by desert. Narrow streets, little shade and few green spaces let heat linger. It is a good test of how the nights of a hot-desert city are changing.",
+"Lagos, Nigeria":"Lagos is hot and humid all year, so the story is less a single heat season than nights that rarely cool down, in one of the fastest-growing cities in the world.",
+"Mexico City, Mexico":"Mexico City lies high in the mountains, about 2,240 metres up, so it was never famous for heat. It has spread across an old lake bed. Is a city with a cool reputation warming anyway?",
+"Sao Paulo, Brazil":"Sao Paulo grew into a vast sprawl of concrete on a plateau, far from the sea. It is not known as a hot city, which makes it a fair test of whether a big, mild-reputation city shows a clear signal."};
+let fq={k:'',q:{},m:0},satT,satKey='',satOK=false,satPending=false;const SIMG=document.createElement('div');SIMG.id='simg';
+const slowNet=!!(navigator.connection&&(navigator.connection.saveData||/2g/.test(navigator.connection.effectiveType||'')));
+const D={},$=id=>document.getElementById(id);let metric='tmax',year=2024,sel=null,playT=null;
+const avg=a=>{a=a.filter(Number.isFinite);return a.length?a.reduce((s,v)=>s+v,0)/a.length:NaN};
+const med=a=>{const s=[...a].sort((x,y)=>x-y),n=s.length;return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2};
+const Phi=z=>{const t=1/(1+.2316419*Math.abs(z)),p=.3989423*Math.exp(-z*z/2)*t*(.3193815+t*(-.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p};
+const fp=p=>p<.001?'&lt; 0.001':p.toFixed(3);
+function mk(y){const n=y.length;let S=0;const sl=[];
+ for(let i=0;i<n-1;i++)for(let j=i+1;j<n;j++){S+=Math.sign(y[j]-y[i]);sl.push((y[j]-y[i])/(j-i))}
+ sl.sort((a,b)=>a-b);const N=sl.length,sen=med(sl),t={};
+ y.forEach(v=>t[v]=(t[v]||0)+1);let ts=0;for(const k in t)if(t[k]>1)ts+=t[k]*(t[k]-1)*(2*t[k]+5);
+ const v0=(n*(n-1)*(2*n+5)-ts)/18,res=y.map((v,i)=>v-sen*i),m=avg(res);let a=0,b=0;
+ res.forEach((r,i)=>{b+=(r-m)**2;if(i<n-1)a+=(r-m)*(res[i+1]-m)});const r1=a/b,f=r1>0?(1+r1)/(1-r1):1;
+ const out=vr=>{const z=S?(S-Math.sign(S))/Math.sqrt(vr):0,Cc=1.96*Math.sqrt(vr);return{z,p:2*(1-Phi(Math.abs(z))),lo:sl[Math.max(0,Math.floor((N-Cc)/2)-1)],hi:sl[Math.min(N-1,Math.ceil((N+Cc)/2))]}};
+ return{n,S,sen,r1,f,icpt:med(res),plain:out(v0),corr:out(v0*f)}}
+function proc(j){const P=j.properties.parameter,ys=[];for(let y=Y0;y<=Y1;y++)ys.push(y);
+ const mo=(k,y,m)=>{const v=P[k][''+y+String(m).padStart(2,'0')];return v>-900?v:NaN};
+ const cl=[...Array(12)].map((_,m)=>avg(ys.map(y=>mo('T2M',y,m+1))));let best=0,bs=-1e9;
+ for(let s=0;s<12;s++){const v=(cl[s]+cl[(s+1)%12]+cl[(s+2)%12])/3;if(v>bs){bs=v;best=s}}
+ const ms=[0,1,2].map(k=>(best+k)%12+1),se=k=>ys.map(y=>avg(ms.map(m=>mo(k,y,m))));
+ const d={years:ys,tmax:se('T2M_MAX'),tmin:se('T2M_MIN'),t2m:ys.map(y=>avg([...Array(12)].map((_,m)=>mo('T2M',y,m+1)))),months:ms};
+ if(![...d.tmax,...d.tmin,...d.t2m].every(Number.isFinite))throw 0;return d}
+async function load(c){const key='ed1_'+c[0];try{const z=JSON.parse(localStorage.getItem(key));if(z&&Date.now()-Date.parse(z.retrieved)<6048e5){z.status='CACHED';return z}}catch(e){}
+ try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),20000),r=await fetch(URLF(c),{signal:ctl.signal});clearTimeout(t);if(!r.ok)throw 0;
+  const d=proc(await r.json());d.status='LIVE';d.retrieved=new Date().toISOString();try{localStorage.setItem(key,JSON.stringify(d))}catch(e){}return d}
+ catch(e){try{const d=JSON.parse(localStorage.getItem(key));if(d){d.status='CACHED';return d}}catch(e2){}return null}}
+let sd=7;const rnd=()=>(sd=(sd*1664525+1013904223)%4294967296)/4294967296,gau=()=>{let s=0;for(let i=0;i<12;i++)s+=rnd();return s-6};
+function synth(c){const ys=[];for(let y=Y0;y<=Y1;y++)ys.push(y);const b=38-.25*Math.abs(c[1]-25),g=o=>{let e=0;return ys.map((y,i)=>{e=.4*e+.3*gau();return b+o+.03*i+e})};
+ return{years:ys,tmax:g(0),tmin:g(-12),t2m:g(-7),months:[0,0,0],status:'SYNTHETIC',retrieved:new Date().toISOString()}}
+const hei=(tx,tn)=>100*Math.min(1,Math.max(0,.5*(tx-20)/20+.5*(tn-10)/20));
+const lvl=p=>p<40?'Low':p<60?'Moderate':p<80?'High':'Severe',last5=a=>avg(a.slice(-5));
+const anom=(d,i)=>d[metric][i]-avg(d[metric].slice(0,10));
+
+/* ---------- 3D ---------- */
+let ren,scene,cam,grp,clouds,mks=[],camZ=3.6,tgt=null,drag=false,ray,mouse,glOK=false,landing=true,gy=-2.1,gs=1.9,stars,pivot,sat,blink,wings,orb=0,ptrs=new Map(),pd=0;
+const ll=(la,lo,R)=>{const p=(90-la)*Math.PI/180,t=(lo+180)*Math.PI/180;return new THREE.Vector3(-R*Math.sin(p)*Math.cos(t),R*Math.cos(p),R*Math.sin(p)*Math.sin(t))};
+function initGL(){if(!window.THREE)return;try{
+ scene=new THREE.Scene();cam=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.1,300);cam.position.z=camZ;
+ ren=new THREE.WebGLRenderer({canvas:$('gl'),antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));ren.setSize(innerWidth,innerHeight);
+ scene.add(new THREE.AmbientLight(0xffffff,.25));const L=new THREE.DirectionalLight(0xfff2dd,1.4);L.position.set(5,2,4);scene.add(L);
+ const tl=new THREE.TextureLoader(),T='https://threejs.org/examples/textures/planets/';
+ const mat=new THREE.MeshPhongMaterial({color:0x1d3b5e,shininess:8,emissive:0xffffff,emissiveIntensity:.0});
+ tl.load(T+'earth_atmos_2048.jpg',t=>{mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true});
+ tl.load(T+'earth_lights_2048.png',t=>{mat.emissiveMap=t;mat.emissive.set(0xffc070);mat.emissiveIntensity=.55;mat.needsUpdate=true});
+ grp=new THREE.Group();grp.rotation.x=.25;grp.position.y=gy;grp.scale.setScalar(gs);camZ=3;cam.position.z=3;scene.add(grp);grp.add(new THREE.Mesh(new THREE.SphereGeometry(1,96,96),mat));
+ const cm=new THREE.MeshPhongMaterial({transparent:true,opacity:.0,depthWrite:false});tl.load(T+'earth_clouds_1024.png',t=>{cm.map=t;cm.opacity=.5;cm.needsUpdate=true});
+ clouds=new THREE.Mesh(new THREE.SphereGeometry(1.01,64,64),cm);grp.add(clouds);
+ grp.add(new THREE.Mesh(new THREE.SphereGeometry(1.12,64,64),new THREE.ShaderMaterial({transparent:true,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false,
+  vertexShader:'varying vec3 n;varying vec3 w;void main(){n=normalize(mat3(modelMatrix)*normal);w=(modelMatrix*vec4(position,1.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(w,1.);}',
+  fragmentShader:'varying vec3 n;varying vec3 w;void main(){float i=pow(clamp(-dot(n,normalize(cameraPosition-w))/.4,0.,1.),2.5);gl_FragColor=vec4(vec3(.3,.55,1.)*i*1.8,i);}'})));
+ const NS=2600,sp=new Float32Array(NS*3),sc=new Float32Array(NS*3);
+ for(let i=0;i<NS;i++){const u=rnd()*2-1,t=rnd()*6.283,q=Math.sqrt(1-u*u),R=90;sp[i*3]=R*q*Math.cos(t);sp[i*3+1]=R*u;sp[i*3+2]=R*q*Math.sin(t);const b=.35+.65*rnd()*rnd(),w=rnd();sc[i*3]=b*(.85+.15*w);sc[i*3+1]=b*.92;sc[i*3+2]=b*(1-.12*w)}
+ const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.BufferAttribute(sp,3));sg.setAttribute('color',new THREE.BufferAttribute(sc,3));
+ stars=new THREE.Points(sg,new THREE.PointsMaterial({size:1.7,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:.95,depthWrite:false}));scene.add(stars);
+ C.forEach(c=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.02,16,16),new THREE.MeshBasicMaterial({color:0x888888}));m.position.copy(ll(c[1],c[2],1.015));m.userData.n=c[0];grp.add(m);m.visible=!landing;mks.push(m)});
+ const ORB=1.18;pivot=new THREE.Group();scene.add(pivot);pivot.rotation.set(1.25,0,.2);
+ pivot.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({length:160},(_,i)=>new THREE.Vector3(Math.cos(i/160*6.2832)*ORB,0,Math.sin(i/160*6.2832)*ORB))),new THREE.LineBasicMaterial({color:0x9fb6cf,transparent:true,opacity:.18})));
+ const tex=(w,h,fn)=>{const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);return new THREE.CanvasTexture(c)};
+ const foil=tex(128,128,(g,w,h)=>{g.fillStyle='#808080';g.fillRect(0,0,w,h);for(let i=0;i<260;i++){const v=70+rnd()*140|0,x=rnd()*w,y=rnd()*h;g.strokeStyle='rgb('+v+','+v+','+v+')';g.lineWidth=1+rnd()*2;g.beginPath();g.moveTo(x,y);g.lineTo(x+(rnd()-.5)*40,y+(rnd()-.5)*40);g.stroke()}});
+ const cells=tex(256,128,(g,w,h)=>{g.fillStyle='#0a1840';g.fillRect(0,0,w,h);for(let y=0;y<4;y++)for(let x=0;x<8;x++){const v=rnd()*20|0;g.fillStyle='rgb('+(16+v)+','+(38+v)+','+(96+v*2)+')';g.fillRect(x*32+2,y*32+2,28,28);g.strokeStyle='#9fb2e0';g.lineWidth=1;g.beginPath();g.moveTo(x*32+16,y*32+2);g.lineTo(x*32+16,y*32+30);g.stroke()}});
+ const M=o=>new THREE.MeshPhongMaterial(o),gold=M({color:0xd2ac52,specular:0xfff0b0,shininess:70,bumpMap:foil,bumpScale:.8}),grey=M({color:0x8d939c,shininess:30}),dark=M({color:0x14171c,shininess:90}),
+  lens=M({color:0x1a3b6e,shininess:120,side:THREE.DoubleSide}),white=M({color:0xeeeeee,shininess:25,side:THREE.DoubleSide}),sol=M({map:cells,specular:0x5577bb,shininess:110});
+ sat=new THREE.Group();wings=new THREE.Group();sat.add(wings);
+ const P=(g,m,x,y,z,r,to)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);if(r)o.rotation.set(r[0],r[1],r[2]);(to||sat).add(o);return o},H=Math.PI/2;
+ /* frame: +x zenith, -x nadir (instruments face Earth), +z direction of travel, y = orbit normal (wing axis) */
+ P(new THREE.BoxGeometry(.035,.035,.05),gold,0,0,0);
+ P(new THREE.CylinderGeometry(.009,.011,.03,16),dark,-.03,0,0,[0,0,H]);P(new THREE.CircleGeometry(.008,16),lens,-.0452,0,0,[0,-H,0]);
+ P(new THREE.BoxGeometry(.012,.014,.02),white,-.0235,0,.02);P(new THREE.BoxGeometry(.03,.03,.0015),white,0,0,.0258);
+ P(new THREE.ConeGeometry(.004,.01,8),grey,.01,.01,-.03,[H,0,0]);P(new THREE.ConeGeometry(.004,.01,8),grey,-.01,-.01,-.03,[H,0,0]);
+ P(new THREE.BoxGeometry(.01,.008,.012),dark,.0215,.008,-.01);
+ P(new THREE.CylinderGeometry(.0015,.0015,.03,6),grey,.032,0,0,[0,0,H]);
+ P(new THREE.SphereGeometry(.02,24,8,0,6.2832,0,Math.PI/3),white,.062,0,0,[0,0,H]);P(new THREE.CylinderGeometry(.001,.0025,.012,8),grey,.068,0,0,[0,0,H]);
+ [-1,1].forEach(k=>{P(new THREE.CylinderGeometry(.0015,.0015,.012,6),grey,0,k*.0235,0,null,wings);[0,1].forEach(j=>P(new THREE.BoxGeometry(.002,.035,.05),sol,0,k*(.047+.036*j),0,null,wings))});
+ blink=P(new THREE.SphereGeometry(.004,8,8),new THREE.MeshBasicMaterial({color:0xf0a43a}),.0235,-.01,.015);
+ pivot.add(sat);
+ ray=new THREE.Raycaster();mouse=new THREE.Vector2();glOK=true;
+ const cv=$('gl');let sx,sy,mv=0;
+ cv.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,[e.clientX,e.clientY]);drag=true;mv=0;sx=e.clientX;sy=e.clientY;tgt=null;cv.setPointerCapture(e.pointerId)});
+ cv.addEventListener('pointermove',e=>{if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,[e.clientX,e.clientY]);if(ptrs.size===2){const [a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd)camZ=cl(camZ*pd/d);pd=d;mv=99;return}if(drag){const dx=e.clientX-sx,dy=e.clientY-sy;mv+=Math.abs(dx)+Math.abs(dy);sx=e.clientX;sy=e.clientY;grp.rotation.y+=dx*.005;grp.rotation.x=Math.max(-1.2,Math.min(1.2,grp.rotation.x+dy*.005))}else hover(e)});
+ cv.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);pd=0;drag=false;if(mv<5){const h=pick(e);if(h)openCase(h)}});
+ cv.addEventListener('wheel',e=>{e.preventDefault();camZ=cl(camZ+e.deltaY*.003)},{passive:false});
+ cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);pd=0;drag=false});
+ addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();ren.setSize(innerWidth,innerHeight)});
+ (function loop(){requestAnimationFrame(loop);
+  if(tgt){const d=(((tgt.y-grp.rotation.y+Math.PI)%(2*Math.PI))+2*Math.PI)%(2*Math.PI)-Math.PI;grp.rotation.y+=d*.06;grp.rotation.x+=(tgt.x-grp.rotation.x)*.06}else if(!drag&&!sel)grp.rotation.y+=landing?.0014:.0006;
+  clouds.rotation.y+=.0002;grp.position.y+=(gy-grp.position.y)*.05;grp.scale.setScalar(grp.scale.x+(gs-grp.scale.x)*.05);pivot.position.copy(grp.position);pivot.scale.copy(grp.scale);orb+=.004;sat.position.set(Math.cos(orb)*ORB,0,Math.sin(orb)*ORB);sat.rotation.y=-orb;wings.rotation.y=orb-.7;blink.visible=Math.sin(Date.now()/180)>0;stars.rotation.y+=.00006;cam.position.z+=(camZ-cam.position.z)*.06;
+  mks.forEach(m=>{const s=m.userData.n===sel?1.8+.3*Math.sin(Date.now()/250):1;m.scale.setScalar(m.userData.k*s)});ren.render(scene,cam)})();
+ }catch(e){glOK=false}}
+function pick(e){if(landing)return null;mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);ray.setFromCamera(mouse,cam);const h=ray.intersectObjects(mks)[0];
+ if(!h)return null;const w=new THREE.Vector3();h.object.getWorldPosition(w);return w.normalize().dot(cam.position.clone().normalize())>.15?h.object.userData.n:null}
+function hover(e){if(!glOK)return;const n=pick(e),t=$('tip');if(!n){t.style.display='none';return}const d=D[n];
+ t.style.display='block';t.style.left=e.clientX+14+'px';t.style.top=e.clientY+10+'px';t.textContent=n+(d?` | ${year}: ${anom(d,year-Y0)>=0?'+':''}${anom(d,year-Y0).toFixed(1)} \u00b0C`:' | no data')}
+function paint(){mks.forEach(m=>{const d=D[m.userData.n];m.userData.k=1;if(!d){m.material.color.set(0x777777);return}
+ const a=anom(d,year-Y0),t=Math.max(0,Math.min(1,a/2.5));m.material.color.setHSL(.58*(1-t),.8,.55);m.userData.k=1+t*.6})}
+
+/* ---------- UI ---------- */
+function list(){const q=($('q').value||'').toLowerCase(),so=$('so').value;
+ const rows=C.map((c,i)=>({c,i,d:D[c[0]]})).filter(r=>r.c[0].toLowerCase().includes(q)&&(so!=='story'||FEAT[r.c[0]]));
+ rows.forEach(r=>r.t=r.d?mk(r.d[metric]).sen*10:null);
+ if(so==='warm')rows.sort((a,b)=>(b.t===null?-99:b.t)-(a.t===null?-99:a.t));else if(so==='az')rows.sort((a,b)=>a.c[0].localeCompare(b.c[0]));
+ $('cl').innerHTML=rows.map(r=>`<button class="it ${sel===r.c[0]?'on':''}" onclick="openCase(C[${r.i}][0])"><span><small>No. ${String(r.i+1).padStart(3,'0')}</small><br>${FEAT[r.c[0]]?'&#9733; ':''}${r.c[0]}</span><span style="text-align:right"><small class="${r.d?r.d.status:''}">${r.d?r.d.status:r.d===null?'NO DATA':'QUEUED'}</small><br>${r.t===null?'':(r.t>=0?'+':'')+r.t.toFixed(2)+'/dec'}</span></button>`).join('')||'<p style="padding:14px" class="lb">No match</p>'}
+function openCase(n){sel=n;const c=C.find(x=>x[0]===n);$('dossier').classList.add('open');if(innerWidth<800)$('cases').classList.remove('open');
+ if(glOK){const p=ll(c[1],c[2],1),a=Math.atan2(p.x,p.z);tgt={y:-a,x:c[1]*Math.PI/180};camZ=2.7}ensure(c);SIMG.innerHTML='<p class="lb" style="margin:12px 0">Loading satellite view...</p>';satKey='';dossier();list()}
+function chart(ys,vs,r,yi){const W=380,H=190,p={l:36,r:8,t:8,b:22},mn=Math.min(...vs),mx=Math.max(...vs),pd=(mx-mn)*.1||.5,lo=mn-pd,hi=mx+pd;
+ const X=i=>p.l+i*(W-p.l-p.r)/(ys.length-1),Y=v=>H-p.b-(v-lo)*(H-p.t-p.b)/(hi-lo);let s=`<svg viewBox="0 0 ${W} ${H}" width="100%">`;
+ for(let k=0;k<=3;k++){const v=lo+(hi-lo)*k/3;s+=`<line x1="${p.l}" x2="${W-p.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#fff2"/><text x="${p.l-4}" y="${Y(v)+3}" text-anchor="end" fill="#8a919c" font-size="9">${v.toFixed(1)}</text>`}
+ ys.forEach((y,i)=>{if(i%10===0)s+=`<text x="${X(i)}" y="${H-6}" text-anchor="middle" fill="#8a919c" font-size="9">${y}</text>`});
+ s+=`<line x1="${X(yi)}" x2="${X(yi)}" y1="${p.t}" y2="${H-p.b}" stroke="#f0a43a" stroke-opacity=".5"/><polyline fill="none" stroke="#e8e6e1" stroke-width="1.4" points="${vs.map((v,i)=>X(i)+','+Y(v)).join(' ')}"/>`;
+ s+=`<line x1="${X(0)}" y1="${Y(r.icpt)}" x2="${X(ys.length-1)}" y2="${Y(r.icpt+r.sen*(ys.length-1))}" stroke="#9fb6cf" stroke-width="1.6" stroke-dasharray="5 4"/><circle cx="${X(yi)}" cy="${Y(vs[yi])}" r="4" fill="#f0a43a"/></svg>`;return s}
+
+/* Benjamini-Hochberg false discovery rate across all loaded cities (corrected MK p-values, selected metric) */
+function fdr(){const nm=C.map(c=>c[0]).filter(n=>D[n]),k=metric+nm.length+nm.map(n=>D[n].status[0]).join('');if(fq.k===k)return fq.q;
+ const ps=nm.map(n=>({n,p:mk(D[n][metric]).corr.p})).sort((a,b)=>a.p-b.p),m=ps.length,q={};let pv=1;
+ for(let i=m-1;i>=0;i--){pv=Math.min(pv,ps[i].p*m/(i+1));q[ps[i].n]=Math.min(1,pv)}fq={k,q,m};return q}
+const satDt=d=>Math.max(2001,year)+'-'+String(d.months[1]||7).padStart(2,'0')+'-15';
+function satDelay(ms){clearTimeout(satT);satPending=true;satT=setTimeout(()=>{satPending=false;satLoad()},ms)}
+function satDone(i,ok){i.dataset.s=ok?'ok':'err';if(!ok)i.style.display='none';const p=i.parentNode,k=[...p.children].filter(x=>x.tagName==='IMG');
+ if(k.every(x=>x.dataset.s)){p.classList.remove('ld');if(k.every(x=>x.dataset.s==='err'))p.dataset.err=1}}
+function satLoad(){if(!sel||!D[sel])return;const c=C.find(x=>x[0]===sel),d=D[sel],dt=satDt(d),key=sel+dt;if(key===satKey)return;satKey=key;
+ if(slowNet&&!satOK){SIMG.innerHTML='<button class="lb" style="color:var(--a);margin:10px 0" onclick="satOK=true;satKey=\'\';satLoad()">LOAD SATELLITE VIEW (uses mobile data)</button>';return}
+ const bb=[c[2]-.5,c[1]-.5,c[2]+.5,c[1]+.5].map(v=>v.toFixed(3)).join(','),
+ u=(l,f)=>`https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${l}&STYLES=&SRS=EPSG:4326&BBOX=${bb}&WIDTH=512&HEIGHT=512&FORMAT=${f}&TRANSPARENT=${f==='image/png'}&TIME=${dt}`,
+ b=u('MODIS_Terra_CorrectedReflectance_TrueColor','image/jpeg'),o=u('MODIS_Terra_Land_Surface_Temp_Day','image/png'),
+ wv=`https://worldview.earthdata.nasa.gov/?v=${bb}&l=MODIS_Terra_Land_Surface_Temp_Day,MODIS_Terra_CorrectedReflectance_TrueColor&t=${dt}`,A=t=>t.replace(/&/g,'&amp;');
+ SIMG.innerHTML=`<div class="lb" style="margin:12px 0 6px">Satellite view | MODIS/Terra | ${dt}</div><div class="sw ld"><img src="${A(b)}" alt="" onload="satDone(this,1)" onerror="satDone(this,0)"><img class="ov" src="${A(o)}" alt="MODIS daytime land surface temperature around ${c[0]} on ${dt}" onload="satDone(this,1)" onerror="satDone(this,0)"></div>
+ <p style="color:var(--mute);font-size:11px;margin:6px 0">True-colour picture with daytime land-surface temperature on top (warmer colours = hotter ground). Clouds or missing swaths leave gaps. About 110 km wide, centred on the city, on the 15th of the middle hot-season month. Picture only: not used in the statistics.</p>
+ <a class="lb" style="color:var(--a)" href="${A(wv)}" target="_blank" rel="noopener">OPEN THIS VIEW IN NASA WORLDVIEW &rarr;</a>
+ <details><summary>IMAGE PROVENANCE</summary><p>NASA GIBS WMS. Layers MODIS_Terra_CorrectedReflectance_TrueColor and MODIS_Terra_Land_Surface_Temp_Day, date ${dt}.</p><p><code>${A(o)}</code></p></details>`;
+ setTimeout(()=>{const w=SIMG.querySelector('.sw.ld');if(w)w.dataset.slow=1},20000)}
+function dossier(){const el=$('dossier');if(!sel)return;const i=C.findIndex(c=>c[0]===sel),c=C[i],d=D[sel],x='<button class="x" onclick="reset()" aria-label="Close">&times;</button>';
+ if(!d){el.innerHTML=x+`<div class="lb">Case ${i+1}</div><h2>${c[0]}</h2><p>${d===undefined?'Retrieving evidence from NASA POWER...':'No evidence could be retrieved and none is cached. Connect to the internet once.'}</p>`;return}
+ const r=mk(d[metric]),qv=fdr()[sel],M=fq.m,sig=qv<.05,up=r.sen>0,tx=last5(d.tmax),tn=last5(d.tmin),rx=mk(d.tmax),rn=mk(d.tmin),h=hei(tx,tn),h35=hei(tx+rx.sen*13,tn+rn.sen*13),a=anom(d,year-Y0);
+ const st=FEAT[sel]?`<div class="story"><span class="lb">Field notes</span><p>${FEAT[sel]}</p><p style="color:var(--mute)">In the data: 2020-24 hot-season days average ${tx.toFixed(1)} &deg;C and nights ${tn.toFixed(1)} &deg;C.</p></div>`:'';
+ const alibi=r.plain.p<.05&&!sig?' A simple trend test would call this a trend, but after the corrections it is not clear yet.':'';
+ el.innerHTML=x+`<div class="lb">Case file No. ${String(i+1).padStart(3,'0')} | <span class="${d.status}">${d.status}</span></div><h2>${c[0]}</h2>
+ <div class="stamp" style="color:${sig?(up?'var(--bad)':'#9fb6cf'):'var(--mute)'}">${sig?(up?'CLEAR WARMING SIGNAL':'CLEAR COOLING SIGNAL'):'NOT CLEAR YET'}</div>
+ <p style="color:var(--ink)">${sig?`Temperatures here are ${up?'rising':'falling'} by about ${Math.abs(r.sen*10).toFixed(2)} &deg;C per decade, and the pattern is too steady to be down to chance.`:`Temperatures moved about ${(r.sen*10).toFixed(2)} &deg;C per decade, but the ups and downs from year to year are too big to be sure it is a real trend.`}</p>
+ <p><b>Evidence:</b> ${ML[metric]} changed by <b>${(r.sen*10>=0?'+':'')+(r.sen*10).toFixed(2)} &deg;C per decade</b> (95% CI ${(r.corr.lo*10).toFixed(2)} to ${(r.corr.hi*10).toFixed(2)}), ${Y0}-${Y1}. After correcting for year-to-year persistence, p = ${fp(r.corr.p)}. Because ${M} cities are tested at once, the false-discovery-adjusted q = ${fp(qv)}; a signal is called clear only when q is below 0.05.${alibi}</p>
+ ${st}${chart(d.years,d[metric],r,year-Y0)}<div id="simgph"></div>
+ <div class="g2"><div><span class="lb">${year} vs 1985-94</span><b>${a>=0?'+':''}${a.toFixed(2)} &deg;C</b></div><div><span class="lb">Heat exposure index 2020-24</span><b>${h.toFixed(0)} <small>${lvl(h)}</small></b></div>
+ <div><span class="lb">Projected index 2035</span><b>${h35.toFixed(0)}</b></div><div><span class="lb">Hot season (months)</span><b>${d.months.join(', ')}</b></div></div>
+ <table><tr><th>Test</th><th>S</th><th>Z</th><th>p</th></tr><tr><td>Plain Mann-Kendall</td><td>${r.S}</td><td>${r.plain.z.toFixed(2)}</td><td>${fp(r.plain.p)}</td></tr><tr><td>Corrected (r1=${r.r1.toFixed(2)})</td><td>${r.S}</td><td>${r.corr.z.toFixed(2)}</td><td>${fp(r.corr.p)}</td></tr><tr><td>Corrected + FDR (${M} cities)</td><td>-</td><td>-</td><td>q ${fp(qv)}</td></tr></table>
+ <details><summary>PROVENANCE</summary><p>NASA POWER Project (MERRA-2 reanalysis), monthly point API, T2M / T2M_MAX / T2M_MIN, community RE. Grid cell about 0.5 x 0.625 deg around ${c[1]}, ${c[2]}. Retrieved ${d.retrieved}.</p><p><code>${URLF(c)}</code></p>
+ <p>Caveat: the statistics use 2 m air temperature from reanalysis, not satellite land-surface temperature, and not the urban heat island. The satellite picture is a visual cross-check only. Index formula and limits: see Method.</p></details>
+ <button class="lb" style="margin-top:12px;color:var(--a)" onclick="exportCSV()">EXPORT CSV WITH PROVENANCE</button>`;$('simgph').replaceWith(SIMG);if(!satPending&&sel+satDt(d)!==satKey)satDelay(150)}
+function exportCSV(){const c=C.find(x=>x[0]===sel),d=D[sel];let t=`# ${c[0]} | ${ML[metric]} | NASA POWER (MERRA-2) | ${d.status} | retrieved ${d.retrieved}\n# ${URLF(c)}\nyear,value_degC\n`;
+ d.years.forEach((y,i)=>t+=`${y},${d[metric][i].toFixed(3)}\n`);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='earth_detective_'+c[0].split(',')[0]+'_'+metric+'.csv';a.click()}
+function reset(){sel=null;tgt=null;camZ=3.6;$('dossier').classList.remove('open');list()}
+function tog(){$('cases').classList.toggle('open')}
+function play(){if(playT){clearInterval(playT);playT=null;$('play').innerHTML='&#9654;';return}$('play').innerHTML='&#10073;&#10073;';
+ playT=setInterval(()=>{year=year>=Y1?Y0:year+1;$('sl').value=year;upd()},320)}
+function upd(){$('yr').textContent=year;paint();if(sel&&D[sel])satDelay(playT?1500:350);dossier()}
+function meth(){const g=s=>{sd=42;let e=0;return Array.from({length:40},(_,i)=>{e=.4*e+.3*gau();return 15+s*i+e})};
+ const rows=[['Known trend +0.030 \u00b0C/yr, AR(1) noise',g(.03),.03],['Null: no trend, same noise',g(0),0]].map(t=>{const q=mk(t[1]),ci=t[2]>=q.corr.lo&&t[2]<=q.corr.hi,ok=t[2]?q.corr.p<.05&&ci:q.corr.p>=.05&&ci;
+  return `<tr><td>${t[0]}</td><td>${t[2].toFixed(3)}</td><td>${q.sen.toFixed(3)} (${q.corr.lo.toFixed(3)} to ${q.corr.hi.toFixed(3)})</td><td class="${ok?'ok':'no'}">${ok?'PASS':'CHECK'}</td></tr>`}).join('');
+ $('mbody').innerHTML=`<button class="x" onclick="$('modal').style.display='none'" aria-label="Close">&times;</button><div class="lb">How the detective works</div>
+ <h3>Evidence</h3><p>Monthly 2 m air temperature (T2M, T2M_MAX, T2M_MIN) from the NASA POWER API, fetched live in your browser and cached locally. Each city's hot season is the 3 months with the highest 1985-2024 mean temperature. Globe colours show each year's departure from that city's 1985-94 average of the selected metric.</p>
+ <h3>Verdict</h3><p>Mann-Kendall trend test with Sen's slope. The variance of S is inflated by (1+r1)/(1-r1) when lag-1 autocorrelation r1 of the detrended residuals is positive. Confidence intervals use that corrected variance. This is a lag-1 approximation, not full Hamed-Rao. Because 100 cities are tested together, p-values are adjusted with the Benjamini-Hochberg false-discovery procedure across all loaded cities (q). A "clear signal" needs q&lt;0.05. "Not clear yet" means the data cannot tell a real trend from yearly noise, not that nothing is happening. q values shift as more cities load.</p>
+ <h3>Heat exposure index</h3><p><code>100 x clamp(0.5 x (Tmax_hot - 20)/20 + 0.5 x (Tmin_hot - 10)/20, 0, 1)</code> using 2020-24 means. A relative screening score, not a validated health model. The 2035 value extrapolates Sen slopes.</p>
+ <h3>Self-test (seeded, live)</h3><table><tr><th>Test</th><th>True</th><th>Recovered (95% CI)</th><th>Result</th></tr>${rows}</table>
+ <h3>Not included</h3><p>Numerical satellite land-surface temperature (ECOSTRESS, MODIS), NDVI and SEDAC population need NASA Earthdata access and are not used or simulated. MODIS daytime land-surface temperature appears only as a NASA GIBS picture in each case file. POWER describes the regional grid cell, not the street-level urban heat island. If data cannot be fetched or cached, Demo mode shows SYNTHETIC values that must not be cited.</p>
+ <h3>Credit</h3><p>NASA Langley Research Center POWER Project (https://power.larc.nasa.gov/), data derived from MERRA-2 (NASA GMAO). Satellite pictures: NASA GIBS (MODIS/Terra). Earth textures: three.js examples.</p>`;$('modal').style.display='flex'}
+function demo(){C.forEach(c=>D[c[0]]=synth(c));$('banner').innerHTML='DEMO MODE: all values are SYNTHETIC. Do not cite.';stat()}
+function stat(){const v=Object.values(D).filter(Boolean),b=$('banner');
+ $('status').innerHTML='<span class="lb">'+v.length+'/'+C.length+' LOADED </span>'+['LIVE','CACHED','SYNTHETIC'].map(s=>{const n=v.filter(d=>d.status===s).length;return n?`<span class="${s}">${n} ${s}</span> `:''}).join('');paint();list();dossier()}
+const INF=new Set(),Q=[...C];let fails=0,stop=false;
+async function ensure(c){if(D[c[0]]||INF.has(c[0]))return;INF.add(c[0]);D[c[0]]=await load(c);INF.delete(c[0]);stat()}
+function noNet(){const b=$('banner');b.style.display='block';b.innerHTML='NASA POWER is unreachable and nothing is cached. Connect once to cache real data. <button class="lb" style="color:var(--a)" onclick="demo()">DEMO MODE (SYNTHETIC)</button>'}
+async function worker(){while(!stop&&Q.length){const c=Q.shift();await ensure(c);if(D[c[0]]===null){if(++fails>=6&&!Object.values(D).some(Boolean)){stop=true;noNet();return}}else if(D[c[0]])fails=0}}
+async function reload(){$('status').innerHTML='<span class="lb">LOADING EVIDENCE...</span>';await Promise.all([worker(),worker(),worker(),worker()])}
+$('sl').oninput=e=>{year=+e.target.value;upd()};$('metric').onchange=e=>{metric=e.target.value;paint();list();dossier()};
+addEventListener('keydown',e=>{if(e.key==='Escape'){$('modal').style.display='none'}if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.key==='+'||e.key==='=')zoom(-1);if(e.key==='-')zoom(1)});
+if(innerWidth<800)$('cases').classList.remove('open');
+
+/* ---------- local accounts (browser only, no server) ---------- */
+const cl=z=>Math.max(1.35,Math.min(8,z));function zoom(d){camZ=cl(camZ*(d>0?1.25:.8))}
+let mode='login';const enc=new TextEncoder(),b64=a=>btoa(String.fromCharCode(...new Uint8Array(a))),esc=t=>t.replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const users=()=>{try{return JSON.parse(localStorage.getItem('ed_users')||'{}')}catch(e){return{}}};
+async function hash(pw,salt){const k=await crypto.subtle.importKey('raw',enc.encode(pw),'PBKDF2',false,['deriveBits']);return b64(await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},k,256))}
+function setMode(m){mode=m;$('t-login').classList.toggle('on',m==='login');$('t-reg').classList.toggle('on',m==='reg');$('go').textContent=m==='reg'?'CREATE ACCOUNT':'SIGN IN';$('ap').autocomplete=m==='reg'?'new-password':'current-password';$('aerr').textContent=''}
+async function auth(e){e.preventDefault();const u=$('au').value.trim(),p=$('ap').value,er=$('aerr');er.textContent='';
+ if(!window.crypto||!crypto.subtle){er.textContent='Secure password storage is unavailable here. Please use guest access.';return}
+ if(u.length<3||p.length<8){er.textContent='Username: 3+ characters. Password: 8+ characters.';return}
+ const key=u.toLowerCase(),U=users();
+ if(mode==='reg'){if(U[key]){er.textContent='That username already exists on this device.';return}
+  const salt=crypto.getRandomValues(new Uint8Array(16));U[key]={name:u,salt:b64(salt),h:await hash(p,salt)};
+  try{localStorage.setItem('ed_users',JSON.stringify(U))}catch(x){er.textContent='Could not save the account (storage blocked). Use guest access.';return}}
+ else{const r=U[key];if(!r){er.textContent='No such account on this device.';return}
+  if(await hash(p,Uint8Array.from(atob(r.salt),c=>c.charCodeAt(0)))!==r.h){er.textContent='Wrong password.';return}}
+ enter(U[key].name)}
+function enter(name){try{sessionStorage.setItem('ed_sess',name)}catch(e){}landing=false;gy=0;gs=1;camZ=3.6;mks.forEach(m=>m.visible=true);document.body.classList.remove('land');
+ $('who').innerHTML='<span class="lb">Detective '+esc(name)+'</span> <button class="lb" style="color:var(--a);margin-left:8px" onclick="signOut()">SIGN OUT</button>';
+ setTimeout(()=>{const l=$('land');if(l)l.remove()},1100);list()}
+function signOut(){try{sessionStorage.removeItem('ed_sess')}catch(e){}location.reload()}
+initGL();list();reload();try{const ss=sessionStorage.getItem("ed_sess");if(ss)enter(ss)}catch(e){}setTimeout(()=>{$('loader').style.opacity=0;setTimeout(()=>$('loader').remove(),900)},1400);
+</script></body></html>
